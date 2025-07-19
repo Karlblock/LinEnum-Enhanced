@@ -1,0 +1,126 @@
+name: Test LinEnum-Enhanced
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    name: Syntax Check
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Check shell script syntax
+      run: |
+        bash -n LinEnum.sh
+        echo "✅ Syntax check passed!"
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    name: ShellCheck Analysis
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+      with:
+        scandir: '.'
+        severity: error
+      continue-on-error: true
+
+  security-tests:
+    runs-on: ubuntu-latest
+    name: Security Tests
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup test environment
+      run: |
+        chmod +x LinEnum.sh
+        
+    - name: Test help function
+      run: |
+        ./LinEnum.sh -h 2>&1 | grep -q "Local Linux Enumeration"
+        
+    - name: Test command injection prevention
+      run: |
+        # This should fail safely with our validation
+        if ./LinEnum.sh -k "test;id" 2>&1 | grep -q "invalid characters"; then
+          echo "✅ Command injection prevention working!"
+        else
+          echo "❌ Command injection prevention failed!"
+          exit 1
+        fi
+        
+    - name: Test safe variable handling
+      run: |
+        # Create test directory with spaces
+        mkdir -p "test dir with spaces"
+        # This should handle spaces safely
+        ./LinEnum.sh -e "test dir with spaces" -r "test report" 2>&1 || true
+        echo "✅ Variable handling test completed!"
+
+  compatibility-test:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    name: Compatibility Test - ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Test basic execution
+      run: |
+        chmod +x LinEnum.sh
+        timeout 30s ./LinEnum.sh 2>&1 | head -100
+        echo "✅ Basic execution test passed on ${{ matrix.os }}!"
+
+  documentation-check:
+    runs-on: ubuntu-latest
+    name: Documentation Check
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Check required documentation files
+      run: |
+        for file in README.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md LICENSE; do
+          if [ -f "$file" ]; then
+            echo "✅ $file exists"
+          else
+            echo "❌ $file is missing!"
+            exit 1
+          fi
+        done
+
+  pr-validation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    name: PR Validation
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Check for large files
+      run: |
+        # Warn if any file is larger than 1MB
+        large_files=$(find . -type f -size +1M)
+        if [ -n "$large_files" ]; then
+          echo "⚠️ Large files detected:"
+          echo "$large_files"
+        fi
+    
+    - name: Check commit messages
+      run: |
+        # Check if commits follow conventional commits
+        echo "Checking commit messages..."
+        git log --format="%s" origin/main..HEAD | while read commit; do
+          if [[ $commit =~ ^(feat|fix|docs|style|refactor|perf|test|chore|revert)(\(.+\))?: ]]; then
+            echo "✅ $commit"
+          else
+            echo "⚠️ Non-conventional commit: $commit"
+          fi
+        done

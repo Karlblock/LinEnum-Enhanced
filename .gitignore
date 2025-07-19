@@ -1,0 +1,45 @@
+# Output files
+*.txt
+report-*
+LinEnum-export-*
+
+# Test directories
+test/
+tests/
+testing/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Export directories
+export/
+exports/
+output/
+
+# Log files
+*.log
+
+# Core dumps
+core
+
+# Coverage reports
+coverage/
+*.coverage
