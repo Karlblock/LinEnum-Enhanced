@@ -1,0 +1,6 @@
+# Ignore all reports by default (may contain sensitive data)
+*
+
+# But keep the README
+!README.md
+!.gitignore
