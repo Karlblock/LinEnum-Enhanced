@@ -147,4 +147,4 @@ This project maintains the GPL v3 license from the original LinEnum. See [LICENS
   <a href="CONTRIBUTING.md">Contribute</a> •
   <a href="https://github.com/YOUR-USERNAME/LinEnum-Enhanced/issues">Report Bug</a> •
   <a href="https://github.com/YOUR-USERNAME/LinEnum-Enhanced/discussions">Discussions</a>
-</p>
+</p># LinEnum-Enhanced
