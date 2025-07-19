@@ -81,6 +81,118 @@ echo -e "\e[00m\n"
 # useful binaries (thanks to https://gtfobins.github.io/)
 binarylist='aria2c\|arp\|ash\|awk\|base64\|bash\|busybox\|cat\|chmod\|chown\|cp\|csh\|curl\|cut\|dash\|date\|dd\|diff\|dmsetup\|docker\|ed\|emacs\|env\|expand\|expect\|file\|find\|flock\|fmt\|fold\|ftp\|gawk\|gdb\|gimp\|git\|grep\|head\|ht\|iftop\|ionice\|ip$\|irb\|jjs\|jq\|jrunscript\|ksh\|ld.so\|ldconfig\|less\|logsave\|lua\|make\|man\|mawk\|more\|mv\|mysql\|nano\|nawk\|nc\|netcat\|nice\|nl\|nmap\|node\|od\|openssl\|perl\|pg\|php\|pic\|pico\|python\|readelf\|rlwrap\|rpm\|rpmquery\|rsync\|ruby\|run-parts\|rvim\|scp\|script\|sed\|setarch\|sftp\|sh\|shuf\|socat\|sort\|sqlite3\|ssh$\|start-stop-daemon\|stdbuf\|strace\|systemctl\|tail\|tar\|taskset\|tclsh\|tee\|telnet\|tftp\|time\|timeout\|ul\|unexpand\|uniq\|unshare\|vi\|vim\|watch\|wget\|wish\|xargs\|xxd\|zip\|zsh'
 
+# Performance optimization: Global file cache variables
+FILESCAN_CACHE_DIR="/tmp/.linenum_cache_$$"
+ALL_FILES_CACHE=""
+SUID_FILES_CACHE=""
+SGID_FILES_CACHE=""
+WW_FILES_CACHE=""
+CACHE_INITIALIZED=0
+
+# Progress indicator function
+show_progress() {
+    local message="$1"
+    if [ "$export" ] || [ "$thorough" ]; then
+        echo -e "\e[00;36m[*] $message...\e[00m"
+    fi
+}
+
+# Consolidated filesystem scan function - runs once, caches results
+perform_consolidated_filescan() {
+    if [ "$CACHE_INITIALIZED" -eq 1 ]; then
+        return 0
+    fi
+    
+    show_progress "Performing optimized filesystem scan"
+    
+    # Create temporary cache directory
+    mkdir -p "$FILESCAN_CACHE_DIR" 2>/dev/null
+    
+    # Single comprehensive find command to gather all file information
+    # This replaces multiple separate find operations
+    current_user=`whoami`
+    find / -type f \( \
+        -perm -4000 -o \
+        -perm -2000 -o \
+        -perm -2 -o \
+        -writable ! -user "$current_user" -o \
+        -user "$current_user" -o \
+        -name ".*" \
+    \) ! -path "/proc/*" ! -path "/sys/*" ! -path "/dev/*" \
+      -exec ls -la {} + 2>/dev/null | \
+    awk -v user="$current_user" '
+    BEGIN { 
+        suid_file = "'$FILESCAN_CACHE_DIR'/suid_files.tmp"
+        sgid_file = "'$FILESCAN_CACHE_DIR'/sgid_files.tmp"
+        ww_file = "'$FILESCAN_CACHE_DIR'/ww_files.tmp"
+        all_file = "'$FILESCAN_CACHE_DIR'/all_files.tmp"
+        user_files = "'$FILESCAN_CACHE_DIR'/user_files.tmp"
+        group_writable = "'$FILESCAN_CACHE_DIR'/group_writable.tmp"
+        hidden_files = "'$FILESCAN_CACHE_DIR'/hidden_files.tmp"
+    }
+    {
+        # Store all file info
+        print $0 > all_file
+        
+        # Parse permissions and ownership
+        perms = $1
+        owner = $3
+        filename = $NF
+        
+        # Check for SUID (4th character is s or S)
+        if (substr(perms, 4, 1) == "s" || substr(perms, 4, 1) == "S") {
+            print $0 > suid_file
+        }
+        
+        # Check for SGID (7th character is s or S)
+        if (substr(perms, 7, 1) == "s" || substr(perms, 7, 1) == "S") {
+            print $0 > sgid_file
+        }
+        
+        # Check for world-writable (10th character is w)
+        if (substr(perms, 10, 1) == "w") {
+            print $0 > ww_file
+        }
+        
+        # Check for user-owned files
+        if (owner == user) {
+            print $0 > user_files
+        }
+        
+        # Check for group-writable files not owned by user
+        if (substr(perms, 6, 1) == "w" && owner != user) {
+            print $0 > group_writable
+        }
+        
+        # Check for hidden files (filename starts with .)
+        if (match(filename, /\/\.[^/]*$/) && filename != "./" && filename != "../") {
+            print $0 > hidden_files
+        }
+    }' 2>/dev/null
+    
+    # Set cache flags
+    CACHE_INITIALIZED=1
+    
+    show_progress "Filesystem scan completed"
+}
+
+# Optimized function to get cached file listings
+get_cached_files() {
+    local file_type="$1"
+    local cache_file="$FILESCAN_CACHE_DIR/${file_type}_files.tmp"
+    
+    if [ -f "$cache_file" ]; then
+        cat "$cache_file" 2>/dev/null
+    fi
+}
+
+# Cleanup cache function
+cleanup_cache() {
+    if [ -d "$FILESCAN_CACHE_DIR" ]; then
+        rm -rf "$FILESCAN_CACHE_DIR" 2>/dev/null
+    fi
+}
+
 system_info()
 {
 echo -e "\e[00;33m### SYSTEM ##############################################\e[00m" 
@@ -276,27 +388,33 @@ if [ "$homedirperms" ]; then
   echo -e "\n"
 fi
 
-#looks for files we can write to that don't belong to us
+#looks for files we can write to that don't belong to us - OPTIMIZED VERSION
 if [ "$thorough" = "1" ]; then
-  grfilesall=`find / -writable ! -user \`whoami\` -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null`
+  # Use cached group-writable files from consolidated scan
+  perform_consolidated_filescan
+  grfilesall=`get_cached_files "group_writable"`
   if [ "$grfilesall" ]; then
     echo -e "\e[00;31m[-] Files not owned by user but writable by group:\e[00m\n$grfilesall" 
     echo -e "\n"
   fi
 fi
 
-#looks for files that belong to us
+#looks for files that belong to us - OPTIMIZED VERSION
 if [ "$thorough" = "1" ]; then
-  ourfilesall=`find / -user \`whoami\` -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null`
+  # Use cached user files from consolidated scan
+  perform_consolidated_filescan
+  ourfilesall=`get_cached_files "user"`
   if [ "$ourfilesall" ]; then
     echo -e "\e[00;31m[-] Files owned by our user:\e[00m\n$ourfilesall"
     echo -e "\n"
   fi
 fi
 
-#looks for hidden files
+#looks for hidden files - OPTIMIZED VERSION
 if [ "$thorough" = "1" ]; then
-  hiddenfiles=`find / -name ".*" -type f ! -path "/proc/*" ! -path "/sys/*" -exec ls -al {} \; 2>/dev/null`
+  # Use cached hidden files from consolidated scan
+  perform_consolidated_filescan
+  hiddenfiles=`get_cached_files "hidden"`
   if [ "$hiddenfiles" ]; then
     echo -e "\e[00;31m[-] Hidden files:\e[00m\n$hiddenfiles"
     echo -e "\n"
@@ -826,9 +944,12 @@ fi
 echo -e "\e[00;31m[-] Can we read/write sensitive files:\e[00m" ; ls -la /etc/passwd 2>/dev/null ; ls -la /etc/group 2>/dev/null ; ls -la /etc/profile 2>/dev/null; ls -la /etc/shadow 2>/dev/null ; ls -la /etc/master.passwd 2>/dev/null 
 echo -e "\n" 
 
-#search for suid files
-allsuid=`find / -perm -4000 -type f 2>/dev/null`
-findsuid=`find $allsuid -perm -4000 -type f -exec ls -la {} 2>/dev/null \;`
+#search for suid files - OPTIMIZED VERSION
+# Ensure consolidated scan has run
+perform_consolidated_filescan
+
+# Get SUID files from cache
+findsuid=`get_cached_files "suid"`
 if [ "$findsuid" ]; then
   echo -e "\e[00;31m[-] SUID files:\e[00m\n$findsuid" 
   echo -e "\n"
@@ -836,33 +957,35 @@ fi
 
 if [ "$export" ] && [ "$findsuid" ]; then
   mkdir "$format/suid-files/" 2>/dev/null
-  for i in $findsuid; do cp "$i" "$format/suid-files/"; done 2>/dev/null
+  echo "$findsuid" | awk '{print $NF}' | while read -r file; do 
+    if [ -f "$file" ]; then cp "$file" "$format/suid-files/" 2>/dev/null; fi
+  done
 fi
 
 #list of 'interesting' suid files - feel free to make additions
-intsuid=`find $allsuid -perm -4000 -type f -exec ls -la {} \; 2>/dev/null | grep -w $binarylist 2>/dev/null`
+intsuid=`echo "$findsuid" | grep -w $binarylist 2>/dev/null`
 if [ "$intsuid" ]; then
   echo -e "\e[00;33m[+] Possibly interesting SUID files:\e[00m\n$intsuid" 
   echo -e "\n"
 fi
 
-#lists world-writable suid files
-wwsuid=`find $allsuid -perm -4002 -type f -exec ls -la {} 2>/dev/null \;`
+#lists world-writable suid files - optimized with awk
+wwsuid=`echo "$findsuid" | awk 'substr($1,10,1)=="w" {print $0}' 2>/dev/null`
 if [ "$wwsuid" ]; then
   echo -e "\e[00;33m[+] World-writable SUID files:\e[00m\n$wwsuid" 
   echo -e "\n"
 fi
 
-#lists world-writable suid files owned by root
-wwsuidrt=`find $allsuid -uid 0 -perm -4002 -type f -exec ls -la {} 2>/dev/null \;`
+#lists world-writable suid files owned by root - optimized with awk
+wwsuidrt=`echo "$findsuid" | awk 'substr($1,10,1)=="w" && $3=="root" {print $0}' 2>/dev/null`
 if [ "$wwsuidrt" ]; then
   echo -e "\e[00;33m[+] World-writable SUID files owned by root:\e[00m\n$wwsuidrt" 
   echo -e "\n"
 fi
 
-#search for sgid files
-allsgid=`find / -perm -2000 -type f 2>/dev/null`
-findsgid=`find $allsgid -perm -2000 -type f -exec ls -la {} 2>/dev/null \;`
+#search for sgid files - OPTIMIZED VERSION
+# Get SGID files from cache (consolidated scan already performed)
+findsgid=`get_cached_files "sgid"`
 if [ "$findsgid" ]; then
   echo -e "\e[00;31m[-] SGID files:\e[00m\n$findsgid" 
   echo -e "\n"
@@ -870,25 +993,27 @@ fi
 
 if [ "$export" ] && [ "$findsgid" ]; then
   mkdir "$format/sgid-files/" 2>/dev/null
-  for i in $findsgid; do cp "$i" "$format/sgid-files/"; done 2>/dev/null
+  echo "$findsgid" | awk '{print $NF}' | while read -r file; do 
+    if [ -f "$file" ]; then cp "$file" "$format/sgid-files/" 2>/dev/null; fi
+  done
 fi
 
 #list of 'interesting' sgid files
-intsgid=`find $allsgid -perm -2000 -type f  -exec ls -la {} \; 2>/dev/null | grep -w $binarylist 2>/dev/null`
+intsgid=`echo "$findsgid" | grep -w $binarylist 2>/dev/null`
 if [ "$intsgid" ]; then
   echo -e "\e[00;33m[+] Possibly interesting SGID files:\e[00m\n$intsgid" 
   echo -e "\n"
 fi
 
-#lists world-writable sgid files
-wwsgid=`find $allsgid -perm -2002 -type f -exec ls -la {} 2>/dev/null \;`
+#lists world-writable sgid files - optimized with awk
+wwsgid=`echo "$findsgid" | awk 'substr($1,10,1)=="w" {print $0}' 2>/dev/null`
 if [ "$wwsgid" ]; then
   echo -e "\e[00;33m[+] World-writable SGID files:\e[00m\n$wwsgid" 
   echo -e "\n"
 fi
 
-#lists world-writable sgid files owned by root
-wwsgidrt=`find $allsgid -uid 0 -perm -2002 -type f -exec ls -la {} 2>/dev/null \;`
+#lists world-writable sgid files owned by root - optimized with awk
+wwsgidrt=`echo "$findsgid" | awk 'substr($1,10,1)=="w" && $3=="root" {print $0}' 2>/dev/null`
 if [ "$wwsgidrt" ]; then
   echo -e "\e[00;33m[+] World-writable SGID files owned by root:\e[00m\n$wwsgidrt" 
   echo -e "\n"
@@ -967,9 +1092,11 @@ gitcredfiles=`find / -name ".git-credentials" 2>/dev/null`
 	fi
 fi
 
-#list all world-writable files excluding /proc and /sys
+#list all world-writable files excluding /proc and /sys - OPTIMIZED VERSION
 if [ "$thorough" = "1" ]; then
-wwfiles=`find / ! -path "*/proc/*" ! -path "/sys/*" -perm -2 -type f -exec ls -la {} 2>/dev/null \;`
+	# Use cached world-writable files from consolidated scan
+	perform_consolidated_filescan
+	wwfiles=`get_cached_files "ww"`
 	if [ "$wwfiles" ]; then
 		echo -e "\e[00;31m[-] World-writable files (excluding /proc and /sys):\e[00m\n$wwfiles" 
 		echo -e "\n"
@@ -1230,6 +1357,7 @@ if [ "$checkbashhist" ]; then
 fi
 
 #any .bak files that may be of interest
+show_progress "Searching for backup files"
 bakfiles=`find / -name *.bak -type f 2</dev/null`
 if [ "$bakfiles" ]; then
   echo -e "\e[00;31m[-] Location and Permissions (if accessible) of .bak file(s):\e[00m"
@@ -1336,7 +1464,7 @@ call_each()
   footer
 }
 
-while getopts "h:k:r:e:st" option; do
+while getopts "hk:r:e:st" option; do
  case "${option}" in
     k) keyword=${OPTARG}
        # Validate keyword to prevent command injection
@@ -1355,4 +1483,14 @@ while getopts "h:k:r:e:st" option; do
 done
 
 call_each | tee -a "$report" 2> /dev/null
+
+# Cleanup cache files to free up space
+cleanup_cache
+
+show_progress "LinEnum scan completed"
+echo -e "\e[00;32m[+] Performance-optimized LinEnum scan finished!\e[00m"
+if [ "$CACHE_INITIALIZED" -eq 1 ]; then
+    echo -e "\e[00;36m[*] Used optimized filesystem scanning to reduce execution time\e[00m"
+fi
+
 #EndOfScript
