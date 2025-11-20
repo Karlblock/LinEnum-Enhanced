@@ -1,4 +1,4 @@
-# LinEnum-Enhanced 🛡️
+# LinEnum-Enhanced 
 
 A **community-first**, security-hardened fork of the popular LinEnum Linux enumeration script. This enhanced version addresses critical security vulnerabilities while maintaining full functionality and adding community-driven improvements.
 
@@ -7,7 +7,7 @@ A **community-first**, security-hardened fork of the popular LinEnum Linux enume
 [![Community First](https://img.shields.io/badge/Community-First-orange.svg)](CONTRIBUTING.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-## 🎯 Why LinEnum-Enhanced?
+##  Why LinEnum-Enhanced?
 
 This fork was created to address critical security vulnerabilities in the original LinEnum while building a welcoming, inclusive community around Linux security tooling. We believe security tools should be:
 
@@ -16,15 +16,15 @@ This fork was created to address critical security vulnerabilities in the origin
 - **Well-documented** - Clear docs help everyone
 - **Ethically focused** - For defensive security only
 
-## ✨ Key Improvements
+##  Key Improvements
 
-### 🔒 Security Enhancements
+###  Security Enhancements
 - **Command injection prevention** - Input validation for all user parameters
 - **Secure password handling** - No passwords visible in process lists
 - **Path traversal protection** - All file operations properly quoted
 - **Safe variable handling** - Prevents exploitation via special characters
 
-### 🚀 Planned Features
+###  Planned Features
 - [ ] Modular architecture for easier contributions
 - [ ] JSON/XML output formats
 - [ ] Performance optimizations
@@ -32,7 +32,7 @@ This fork was created to address critical security vulnerabilities in the origin
 - [ ] Automated testing suite
 - [ ] Multi-language support
 
-## 📖 Usage
+##  Usage
 
 ```bash
 # Basic enumeration
@@ -56,18 +56,18 @@ This fork was created to address critical security vulnerabilities in the origin
 - `-r` Report name
 - `-h` Help
 
-## 🤝 Community First
+## Community First
 
 We're building an inclusive community around Linux security tooling. Whether you're a:
-- 🎓 Student learning security
-- 🔍 Researcher finding vulnerabilities
-- 💻 Developer improving code
-- 📚 Writer enhancing documentation
-- 🌍 Translator localizing content
+-  Student learning security
+-  Researcher finding vulnerabilities
+-  Developer improving code
+-  Writer enhancing documentation
+-  Translator localizing content
 
 **You belong here!** Check our [Contributing Guide](CONTRIBUTING.md) to get started.
 
-## 🛡️ Security
+##  Security
 
 This tool is for **defensive security purposes only**:
 - ✅ Authorized penetration testing
@@ -77,7 +77,7 @@ This tool is for **defensive security purposes only**:
 
 Found a vulnerability? Please see our [Security Policy](SECURITY.md) for responsible disclosure.
 
-## 📊 Improvements Over Original
+##  Improvements Over Original
 
 | Feature | Original | Enhanced |
 |---------|----------|----------|
@@ -87,11 +87,11 @@ Found a vulnerability? Please see our [Security Policy](SECURITY.md) for respons
 | Input Validation | ❌ None | ✅ Strict validation |
 | Community Focus | ➖ Limited | ✅ First priority |
 
-## 🚦 Getting Started
+##  Getting Started
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR-USERNAME/LinEnum-Enhanced.git
+   git clone https://github.com/Karlblock/LinEnum-Enhanced.git
    cd LinEnum-Enhanced
    chmod +x LinEnum.sh
    ```
@@ -107,9 +107,9 @@ Found a vulnerability? Please see our [Security Policy](SECURITY.md) for respons
    - Read contribution guidelines
    - Make your first PR!
 
-## 📈 Roadmap
+##  Roadmap
 
-See our [public roadmap](https://github.com/YOUR-USERNAME/LinEnum-Enhanced/projects/1) for planned features and improvements.
+See our [public roadmap](https://github.com/Karlblock/LinEnum-Enhanced/projects/1) for planned features and improvements.
 
 ### Near Term (v1.0)
 - Complete security audit
@@ -123,15 +123,15 @@ See our [public roadmap](https://github.com/YOUR-USERNAME/LinEnum-Enhanced/proje
 - GUI interface option
 - API for integration
 
-## 👥 Contributors
+##  Contributors
 
 We appreciate all contributions! See our [Contributors List](CONTRIBUTORS.md).
 
-## 📜 License
+##  License
 
 This project maintains the GPL v3 license from the original LinEnum. See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - Original LinEnum by @rebootuser
 - Security improvements inspired by community feedback
@@ -145,7 +145,7 @@ This project maintains the GPL v3 license from the original LinEnum. See [LICENS
 
 <p align="center">
   <a href="CONTRIBUTING.md">Contribute</a> •
-  <a href="https://github.com/YOUR-USERNAME/LinEnum-Enhanced/issues">Report Bug</a> •
-  <a href="https://github.com/YOUR-USERNAME/LinEnum-Enhanced/discussions">Discussions</a>
+  <a href="https://github.com/Karlblock/LinEnum-Enhanced/issues">Report Bug</a> •
+  <a href="https://github.com/Karlblock/LinEnum-Enhanced/discussions">Discussions</a>
 </p># LinEnum-Enhanced
 # LinEnum-Enhanced
